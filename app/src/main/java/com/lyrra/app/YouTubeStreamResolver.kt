@@ -1,0 +1,281 @@
+package com.lyrra.app
+
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import com.lyrra.app.ytcipher.YtCipherDeobfuscator
+import com.lyrra.app.ytcipher.YtCipherFunctionExtractor
+import com.lyrra.app.ytcipher.YtPlayerJsFetcher
+import com.lyrra.app.ytcipher.potoken.PoTokenGenerator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+
+private const val TAG = "YtStreamResolver"
+
+/**
+ * Resolves a YouTube video id to a genuinely playable stream URL via an authenticated WEB_REMIX
+ * `/player` request - the real pipeline validated in isolation (`ProviderTestScreen`'s "Full Auth
+ * Resolve"/"Play via real ExoPlayer pipeline" buttons, since removed) and now wired into actual
+ * playback.
+ *
+ * Combines three pieces built separately: a real `visitorData` (fetched from
+ * `music.youtube.com/sw.js_data`, same source Metrolist's `YouTube.visitorData()` uses),
+ * [PoTokenGenerator]'s BotGuard-minted PoToken, and [YtCipherDeobfuscator]'s signature/n-parameter
+ * deciphering - see each call site below for exactly where every piece goes in the request,
+ * following Metrolist's wiring (GPL-3.0, https://github.com/MetrolistGroup/Metrolist).
+ *
+ * **Resolved URLs are cached against the real `expiresInSeconds` the player response itself
+ * reports** (see [ResolvedUrlCache]), not held forever - a resolve that would otherwise repeat
+ * the whole visitorData/PoToken/cipher/`/player` pipeline on every single ExoPlayer HTTP (re)open
+ * (skip-back, resume-after-pause, ...) can instead be served from cache until shortly before it
+ * actually expires. [invalidate] clears an entry early when playback of it fails, matching
+ * Metrolist's `songUrlCache` (`MusicService.kt`, GPL-3.0) shape. See [PlaybackService]'s
+ * `lyrra.invalid` resolving data source, which still calls [resolve] on every HTTP (re)open -
+ * caching happens inside [resolve] itself, so callers don't need to know or care.
+ */
+object YouTubeStreamResolver {
+
+    private val httpClient get() = YtHttpClients.client
+
+    // Bounds memory for a long session with a large queue without needing a separate eviction
+    // pass. See [ResolvedUrlCache] for the expiry/eviction math itself (extracted so it's directly
+    // unit-testable without dragging in Context/OkHttp/WebView).
+    private val urlCache = ResolvedUrlCache()
+
+    // visitorData itself isn't the short-lived part (only the minted stream URL/PoToken pairing
+    // is) - fetched once and reused, refreshed only if a resolve attempt fails outright.
+    private val visitorDataMutex = Mutex()
+    private var cachedVisitorData: String? = null
+
+    // The full cold-start pipeline (visitorData, player.js, BotGuard PoToken via a hidden
+    // WebView, cipher deobfuscation, the /player request itself) can legitimately take several
+    // seconds - longer than an ordinary content fetch - but must still be bounded so a stuck step
+    // becomes a genuine, timely failure (handled identically to any other resolve failure by
+    // every caller) instead of hanging playback indefinitely.
+    private const val RESOLVE_TIMEOUT_MS = 20_000L
+
+    /** Resolves [videoId] to a directly-playable URL, or null if any step fails or exceeds
+     * [RESOLVE_TIMEOUT_MS]. Serves a cached URL (see class doc) when one is still live, skipping
+     * the whole pipeline. Safe to call from any thread - internally dispatches to
+     * [Dispatchers.IO]. */
+    suspend fun resolve(context: Context, videoId: String): String? = withContext(Dispatchers.IO) {
+        urlCache.get(videoId)?.let { return@withContext it }
+        try {
+            withTimeout(RESOLVE_TIMEOUT_MS) { resolveInternal(context, videoId) }
+        } catch (e: TimeoutCancellationException) {
+            Log.w(TAG, "[$videoId] resolve() timed out after ${RESOLVE_TIMEOUT_MS}ms")
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "[$videoId] resolve() failed", e)
+            null
+        }
+    }
+
+    /** Drops any cached resolution for [videoId], forcing the next [resolve] call to run the
+     * full pipeline. Callers should invoke this after a playback failure for a track resolved
+     * from cache, in case the cached URL is the reason it failed (expired early, rejected by the
+     * CDN for an unrelated reason, ...) - see [PlayerViewModel]'s YouTube retry path. */
+    fun invalidate(videoId: String) {
+        urlCache.invalidate(videoId)
+    }
+
+    private suspend fun resolveInternal(context: Context, videoId: String): String? {
+        return try {
+            YtCipherDeobfuscator.initialize(context)
+
+            val visitorData = getVisitorData(forceRefresh = false)
+                ?: run { Log.w(TAG, "[$videoId] could not obtain visitorData"); return null }
+
+            val playerJs = YtPlayerJsFetcher.getPlayerJs()
+                ?: run { Log.w(TAG, "[$videoId] could not fetch player.js"); return null }
+            val signatureTimestamp = YtCipherFunctionExtractor.extractSignatureTimestamp(playerJs.source, context, playerJs.hash)
+                ?: run { Log.w(TAG, "[$videoId] could not determine signatureTimestamp"); return null }
+
+            val poToken = PoTokenGenerator.generate(context, videoId, visitorData)
+                ?: run { Log.w(TAG, "[$videoId] PoTokenGenerator.generate() returned null"); return null }
+
+            var playerResponse = requestPlayerEndpoint(videoId, visitorData, signatureTimestamp, poToken.playerRequestPoToken)
+            var status = playerResponse.optJSONObject("playabilityStatus")?.optString("status")
+
+            // A stale/invalid visitorData surfaces as an auth-flavored playability failure - retry
+            // once with a freshly-fetched one before giving up (distinct from the stream-URL
+            // freshness problem this resolver exists to solve in the first place).
+            if (status != "OK" && isLikelyAuthFailure(status)) {
+                Log.w(TAG, "[$videoId] playabilityStatus=$status, retrying once with a fresh visitorData")
+                val freshVisitorData = getVisitorData(forceRefresh = true)
+                    ?: return null
+                playerResponse = requestPlayerEndpoint(videoId, freshVisitorData, signatureTimestamp, poToken.playerRequestPoToken)
+                status = playerResponse.optJSONObject("playabilityStatus")?.optString("status")
+            }
+
+            if (status != "OK") {
+                Log.w(TAG, "[$videoId] playabilityStatus=$status - not playable")
+                return null
+            }
+
+            val format = pickBestAudioFormat(playerResponse)
+                ?: run { Log.w(TAG, "[$videoId] no audio format in adaptiveFormats"); return null }
+
+            val directUrl = format.optString("url").takeIf { it.isNotBlank() }
+            val signatureCipher = format.optString("signatureCipher").takeIf { it.isNotBlank() }
+                ?: format.optString("cipher").takeIf { it.isNotBlank() }
+
+            var streamUrl = when {
+                directUrl != null -> directUrl
+                signatureCipher != null -> YtCipherDeobfuscator.deobfuscateStreamUrl(signatureCipher)
+                else -> null
+            } ?: run { Log.w(TAG, "[$videoId] could not resolve a stream URL"); return null }
+
+            // n-transform (throttle avoidance), THEN append the per-video PoToken - Metrolist's
+            // exact ordering (YTPlayerUtils.kt).
+            streamUrl = YtCipherDeobfuscator.transformNParamInUrl(streamUrl)
+            val separator = if ("?" in streamUrl) "&" else "?"
+            streamUrl = "$streamUrl${separator}pot=${Uri.encode(poToken.streamingDataPoToken)}"
+
+            val expiresInSeconds = playerResponse.optJSONObject("streamingData")
+                ?.optString("expiresInSeconds")
+                ?.toLongOrNull()
+            urlCache.put(videoId, streamUrl, expiresInSeconds)
+
+            streamUrl
+        } catch (e: Exception) {
+            Log.e(TAG, "[$videoId] resolve() failed", e)
+            null
+        }
+    }
+
+    private fun isLikelyAuthFailure(status: String?): Boolean =
+        status in setOf("LOGIN_REQUIRED", "ERROR", "UNPLAYABLE")
+
+    /** Same source Metrolist's `YouTube.visitorData()` reads: `sw.js_data` is a JSONP-ish blob
+     * (anti-XSSI `)]}'` prefix, then a JSON array) that embeds a fresh visitorData token
+     * (base64, conventionally starting "Cgt"/"Cgs") among `data[0][2]`'s elements. */
+    private suspend fun getVisitorData(forceRefresh: Boolean): String? = visitorDataMutex.withLock {
+        if (!forceRefresh) cachedVisitorData?.let { return it }
+        val fetched = fetchVisitorData()
+        if (fetched != null) cachedVisitorData = fetched
+        fetched
+    }
+
+    private fun fetchVisitorData(): String? {
+        val request = Request.Builder()
+            .url("https://music.youtube.com/sw.js_data")
+            .header("User-Agent", WEB_USER_AGENT)
+            .build()
+        val body = httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return null
+            response.body?.string()
+        } ?: return null
+
+        val jsonText = body.removePrefix(")]}'").trimStart('\n')
+        val third = JSONArray(jsonText).getJSONArray(0).optJSONArray(2) ?: return null
+        val pattern = Regex("^Cg[ts]")
+        for (i in 0 until third.length()) {
+            val value = third.opt(i)
+            if (value is String && pattern.containsMatchIn(value)) return value
+        }
+        return null
+    }
+
+    private fun requestPlayerEndpoint(
+        videoId: String,
+        visitorData: String,
+        signatureTimestamp: Int,
+        playerRequestPoToken: String
+    ): JSONObject {
+        val body = JSONObject().apply {
+            put("context", JSONObject().apply {
+                put("client", JSONObject().apply {
+                    put("clientName", "WEB_REMIX")
+                    put("clientVersion", WEB_REMIX_CLIENT_VERSION)
+                    put("gl", "US")
+                    put("hl", "en")
+                    put("visitorData", visitorData)
+                })
+                put("request", JSONObject().apply {
+                    put("internalExperimentFlags", JSONArray())
+                    put("useSsl", true)
+                })
+                put("user", JSONObject().apply { put("lockedSafetyMode", false) })
+            })
+            put("videoId", videoId)
+            put("playlistId", JSONObject.NULL)
+            put("contentCheckOk", true)
+            put("racyCheckOk", true)
+            put("playbackContext", JSONObject().apply {
+                put("contentPlaybackContext", JSONObject().apply {
+                    put("signatureTimestamp", signatureTimestamp)
+                })
+            })
+            put("serviceIntegrityDimensions", JSONObject().apply {
+                put("poToken", playerRequestPoToken)
+            })
+        }
+
+        val request = Request.Builder()
+            .url("https://music.youtube.com/youtubei/v1/player?prettyPrint=false")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .header("X-Goog-Api-Format-Version", "1")
+            .header("X-YouTube-Client-Name", "67") // WEB_REMIX's clientId
+            .header("X-YouTube-Client-Version", WEB_REMIX_CLIENT_VERSION)
+            .header("X-Goog-Visitor-Id", visitorData)
+            .header("X-Origin", "https://music.youtube.com")
+            .header("Referer", "https://music.youtube.com/")
+            .header("User-Agent", WEB_USER_AGENT)
+            .build()
+
+        return httpClient.newCall(request).execute().use { response ->
+            JSONObject(response.body?.string() ?: error("Empty /player response (HTTP ${response.code})"))
+        }
+    }
+
+    private fun pickBestAudioFormat(playerResponse: JSONObject): JSONObject? {
+        val formats = playerResponse.optJSONObject("streamingData")?.optJSONArray("adaptiveFormats") ?: return null
+        var best: JSONObject? = null
+        var bestScore = -1.0
+        for (i in 0 until formats.length()) {
+            val format = formats.optJSONObject(i) ?: continue
+            val mime = format.optString("mimeType")
+            if (!mime.startsWith("audio/")) continue
+
+            val bitrate = format.optInt("bitrate", 0)
+            val avgBitrate = format.optInt("averageBitrate", bitrate)
+            val maxBitrate = Math.max(bitrate, avgBitrate)
+            val audioQuality = format.optString("audioQuality")
+            val sampleRate = format.optInt("audioSampleRate", 0)
+            val audioChannels = format.optInt("audioChannels", 2)
+
+            var score = maxBitrate.toDouble()
+            // Heavily prefer high quality audio
+            if (audioQuality == "AUDIO_QUALITY_HIGH") score += 120000.0
+            if (audioQuality == "AUDIO_QUALITY_MEDIUM") score += 40000.0
+            // Prefer Opus (YouTube's best audio codec) over AAC
+            if (mime.contains("opus")) score += 25000.0
+            if (mime.contains("mp4a") && mime.contains("mp4a.40.2")) score += 10000.0
+            // Higher sample rates = better fidelity
+            if (sampleRate >= 48000) score += 15000.0
+            if (sampleRate >= 44100) score += 5000.0
+            // Stereo preferred
+            if (audioChannels >= 2) score += 3000.0
+
+            if (score > bestScore) {
+                bestScore = score
+                best = format
+            }
+        }
+        return best
+    }
+
+    private const val WEB_REMIX_CLIENT_VERSION = "1.20260114.03.00"
+    private const val WEB_USER_AGENT =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
+}

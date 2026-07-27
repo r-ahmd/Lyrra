@@ -1,0 +1,151 @@
+package com.lyrra.app
+
+/** Visual treatment for a player surface's background. */
+enum class BackgroundStyle(val label: String) {
+    Solid("Solid"),
+    /** Vertical gradient built from the artwork's dominant and muted colours. */
+    Gradient("Album gradient"),
+    /** The artwork itself, blurred and dimmed behind the content. */
+    Blur("Blurred artwork")
+    // Glow removed - was a drifting-blob effect, to be reimplemented later.
+}
+
+/** Which theme color drives the Now Playing control buttons. */
+enum class PlayerButtonColorOption(val label: String) {
+    Primary("Primary"),
+    Secondary("Secondary"),
+    Tertiary("Tertiary")
+}
+
+/** Visual style of the Now Playing progress slider. */
+enum class PlayerSliderStyle(val label: String) {
+    Default("Default"),
+    Wavy("Wavy"),
+    /** A thinner track for a more restrained player. */
+    Slim("Slim")
+}
+
+/** Horizontal alignment of the lyrics text block. */
+enum class LyricsTextPosition(val label: String) {
+    Left("Left"),
+    Center("Center"),
+    Right("Right")
+}
+
+/** Named animation styles for the word-by-word lyrics highlight. */
+enum class WordAnimationStyle(val label: String) {
+    Fade("Fade"),
+    Bounce("Bounce"),
+    Scale("Scale"),
+    Wave("Wave"),
+    Karaoke("Karaoke sweep"),
+}
+
+/** Which bottom-nav tab is shown when the app is launched. */
+enum class DefaultTab(val label: String) {
+    Home("Home"),
+    Search("Search"),
+    Library("Library"),
+    Settings("Settings")
+}
+
+/** Which Library tab/chip is selected by default. */
+enum class DefaultLibraryChip(val label: String) {
+    Playlists("Playlists"),
+    LikedSongs("Liked Songs"),
+    Downloads("Downloads"),
+    RecentlyPlayed("Recently Played")
+}
+
+/** Size of grid cells used in grid-style browsing layouts. */
+enum class GridCellSize(val label: String) {
+    Small("Small"),
+    Medium("Medium"),
+    Large("Large")
+}
+
+/** Overall UI density/spacing of the app. */
+enum class DisplayDensity(val label: String) {
+    Compact("Compact"),
+    Native("Native"),
+    Comfortable("Comfortable")
+}
+
+/**
+ * All Appearance-adjacent app preferences beyond the app-wide background [ThemeState].
+ * These are UI-only preferences: persisted via DataStore (see [AppSettingsViewModel]) so
+ * choices survive relaunch, but (aside from the theme itself) don't yet drive real
+ * playback/lyrics behavior.
+ */
+data class AppSettingsState(
+    // Mini-player
+    val miniPlayerBackgroundStyle: BackgroundStyle = BackgroundStyle.Solid,
+
+    // Player
+    val playerBackgroundStyle: BackgroundStyle = BackgroundStyle.Solid,
+    val hidePlayerThumbnail: Boolean = false,
+    val thumbnailCornerRadius: Int = 12,
+    val cropAlbumArt: Boolean = true,
+    val playerButtonColor: PlayerButtonColorOption = PlayerButtonColorOption.Primary,
+    val playerSliderStyle: PlayerSliderStyle = PlayerSliderStyle.Default,
+    val swipeToChangeSong: Boolean = false,
+    val showAnimatedCanvas: Boolean = false,
+    val rotatingThumbnailAnimation: Boolean = false,
+    val showCommentButton: Boolean = false,
+    val showCodecInfo: Boolean = false,
+    val miniPlayerSwipeSensitivity: Int = 50,
+
+    // Lyrics
+    val lyricsTextPosition: LyricsTextPosition = LyricsTextPosition.Center,
+    val wordAnimationStyle: WordAnimationStyle = WordAnimationStyle.Fade,
+    val glowingLyricsEffect: Boolean = false,
+    val blurInactiveLines: Boolean = true,
+    val lyricsTextSize: Int = 20,
+    val lyricsLineSpacing: Float = 1.2f,
+    val changeLyricsOnClick: Boolean = true,
+    val autoScrollLyrics: Boolean = true,
+    val swipeSongInFullscreenLyrics: Boolean = true,
+    val showPlayPauseOverlayOnThumbnail: Boolean = true,
+    val hideStatusBarInFullscreenLyrics: Boolean = false,
+
+    // Playback quality
+    /** Drops silent passages, so gapless-mastered albums and padded uploads run tighter. */
+    val skipSilence: Boolean = false,
+    /** Restores the queue and position after the app is killed. */
+    val persistentQueue: Boolean = true,
+    /** Resolves the next track's stream URL ahead of time, removing the gap between tracks. */
+    val preloadNextTrack: Boolean = true,
+    /** Smooths loudness differences between tracks - a dynamic-range compressor in the audio
+     * pipeline, not a per-track precomputed gain (this app has no loudness database to draw one
+     * from). See [com.lyrra.app.audio.NormalizerAudioProcessor]. */
+    val audioNormalizationEnabled: Boolean = false,
+    /** Fades the outgoing track out and the incoming one in over [crossfadeDurationMs], rather
+     * than true overlapping playback of two simultaneous decoders - the same fade-based approach
+     * most mobile players use under this name. See [PlayerViewModel.applyCrossfadeVolume]. */
+    val crossfadeEnabled: Boolean = false,
+    val crossfadeDurationMs: Int = 4000,
+    /** A low-shelf boost distinct from the equalizer's own 60Hz band - see
+     * [com.lyrra.app.audio.BassBoostAudioProcessor]'s doc for why they're kept separate. */
+    val bassBoostEnabled: Boolean = false,
+    val bassBoostIntensity: Int = 50,
+    /** Headphone crossfeed (blends a dulled portion of each channel into the other) - see
+     * [com.lyrra.app.audio.CrossfeedAudioProcessor]. Not a full spatial/HRTF virtualizer. */
+    val crossfeedEnabled: Boolean = false,
+    val crossfeedIntensity: Int = 30,
+
+    // Misc
+    val defaultOpenTab: DefaultTab = DefaultTab.Home,
+    val defaultLibraryChip: DefaultLibraryChip = DefaultLibraryChip.Playlists,
+    val swipeSongToQueue: Boolean = false,
+    val enableHaptics: Boolean = true,
+    val swipeSongToRemoveFromPlaylist: Boolean = false,
+    val gridCellSize: GridCellSize = GridCellSize.Medium,
+    val displayDensity: DisplayDensity = DisplayDensity.Comfortable,
+
+    // Auto playlists
+    val showLikedPlaylist: Boolean = true,
+    val showDownloadedPlaylist: Boolean = true,
+    val showExportedPlaylist: Boolean = false,
+    val showTopPlaylist: Boolean = true,
+    val showCachedPlaylist: Boolean = false
+)
