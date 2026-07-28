@@ -63,15 +63,7 @@ git clone https://github.com/YOUR_USERNAME/Lyrra.git
 cd Lyrra
 ```
 
-### 2. Configure environment
-
-Copy the example environment file and fill in your API keys if needed:
-
-```bash
-cp .env.example .env
-```
-
-### 3. Build the debug APK
+### 2. Build the debug APK
 
 ```bash
 ./gradlew assembleDebug
@@ -82,7 +74,7 @@ The APK will be at:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### 4. Run on a device
+### 3. Run on a device
 
 ```bash
 ./gradlew installDebug
@@ -120,7 +112,6 @@ Lyrra/
 │       └── viewmodel/                   # ViewModels
 ├── innertube/                           # YouTube InnerTube API module
 ├── gradle/                              # Gradle wrapper & version catalog
-├── .env.example                         # Environment variable template
 └── LICENSE                              # GPLv3
 ```
 
