@@ -30,7 +30,7 @@ Welcome to the biggest update to MuseFlow yet! **v1.1.1 Beta** introduces a mass
 
 ---
 
-## MuseFlow Beta v1.1.2
+## Lyrra v1.1.1 (MuseFlow Beta v1.1.2)
 
 * **First-run onboarding screen**: shown once on a fresh install and once again after every update, matching Echo Music's own "show once per version" pattern - an app intro card, a hobby-project/bug-report notice with a one-tap email link, a muted "Star the Repo" action, and a solid "Continue" button.
 * **Karaoke lyrics sweep smoothed further**: the in-progress word's highlight now animates on Compose's own frame clock instead of being sampled from the player's polled position, so it reads as continuous rather than stepped.
