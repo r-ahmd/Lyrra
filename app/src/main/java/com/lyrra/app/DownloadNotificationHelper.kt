@@ -57,7 +57,12 @@ object DownloadNotificationHelper {
         } else {
             builder.setProgress(0, 0, true)
         }
-        NotificationManagerCompat.from(context).notify(notificationId(track.downloadKey()), builder.build())
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            NotificationManagerCompat.from(context).notify(notificationId(track.downloadKey()), builder.build())
+        }
     }
 
     fun showCompleted(context: Context, track: Track) {
@@ -71,7 +76,12 @@ object DownloadNotificationHelper {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
-        NotificationManagerCompat.from(context).notify(notificationId(track.downloadKey()), notification)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            NotificationManagerCompat.from(context).notify(notificationId(track.downloadKey()), notification)
+        }
     }
 
     /** Called on cancel/failure - otherwise a stuck "Downloading..." notification (which

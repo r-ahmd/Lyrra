@@ -11,13 +11,13 @@ plugins {
 
 android {
   namespace = "com.lyrra.app"
-  compileSdk = 34
+  compileSdk { version = release(37) { minorApiLevel = 1 } }
 
   defaultConfig {
     applicationId = "com.lyrra.app"
-    minSdk = 33
-    targetSdk = 34
-    versionCode = 1
+    minSdk = 30
+    targetSdk = 35
+    versionCode = 2
     versionName = "1.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -31,12 +31,6 @@ android {
       keyAlias = "upload"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
-    }
   }
 
   buildTypes {
@@ -46,7 +40,7 @@ android {
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug { }
   }
   compileOptions {
     isCoreLibraryDesugaringEnabled = true

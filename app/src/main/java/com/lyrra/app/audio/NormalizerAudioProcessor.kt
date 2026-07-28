@@ -46,7 +46,7 @@ class NormalizerAudioProcessor : BaseAudioProcessor() {
         enabled = value
     }
 
-    override fun isActive(): Boolean = enabled
+    override fun isActive(): Boolean = super.isActive() && enabled
 
     override fun queueInput(inputBuffer: ByteBuffer) {
         val remaining = inputBuffer.remaining()

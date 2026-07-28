@@ -1,5 +1,6 @@
 package com.lyrra.app
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.ComponentName
 import android.net.Uri
@@ -10,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
@@ -76,6 +78,7 @@ fun Long.asPlaybackTime(): String {
  * foreground service - surviving this ViewModel, the Activity, and the app being backgrounded -
  * and so the media notification stays the single source of truth for what's playing.
  */
+@SuppressLint("UnsafeOptInUsageError")
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
 
     private var controller: MediaController? = null
@@ -162,6 +165,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         controller.volume = minOf(fadeInFactor, fadeOutFactor, 1f)
     }
 
+    @UnstableApi
     private fun connect() {
         val token = SessionToken(
             getApplication(),
@@ -446,6 +450,5 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         controller?.removeListener(listener)
         controller?.release()
         controller = null
-        super.onCleared()
     }
 }

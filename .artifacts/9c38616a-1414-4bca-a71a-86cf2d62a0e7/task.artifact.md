@@ -1,0 +1,5 @@
+- [ ] Update `ic_launcher_background.xml` with deep purple gradient
+- [ ] Update `ic_launcher_foreground.xml` with pink card and music note
+- [ ] Update adaptive icon XMLs to use vector drawables
+- [ ] Verify build and lint
+- [ ] Deploy and verify icon on device

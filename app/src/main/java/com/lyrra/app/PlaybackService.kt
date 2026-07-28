@@ -26,6 +26,7 @@ import com.lyrra.app.audio.EqualizerAudioProcessor
 import com.lyrra.app.audio.NormalizerAudioProcessor
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.ListenableFuture
@@ -56,6 +57,7 @@ import java.io.IOException
  * playable JioSaavn stream URL just before ExoPlayer needs it. This is Media3's documented lazy
  * playlist pattern, and it keeps all network/decryption work off the UI/controller side.
  */
+@UnstableApi
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null

@@ -99,9 +99,6 @@ class MainActivity : ComponentActivity() {
  * the same instance - a theme change made in Settings recomposes the whole tree at once.
  */
 @Composable
-fun LyrraApp() = LyrraApp()
-
-@Composable
 fun LyrraApp() {
     val themeViewModel: ThemeViewModel = viewModel()
     val theme by themeViewModel.themeState.collectAsState()

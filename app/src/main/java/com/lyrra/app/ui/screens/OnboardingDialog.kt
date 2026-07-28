@@ -142,7 +142,9 @@ fun OnboardingDialog(
 }
 
 private const val SUPPORT_EMAIL = "mynulkbr@gmail.com"
-private const val REPO_URL = "https://github.com/Panduu3163/Muse_Flow"
+private const val REPO_URL = "https://github.com/r-ahmd/Lyrra"
+private const val DEV_GITHUB = "mynulkbr"
+private const val CO_DEV_GITHUB = "tnbr-ahmd"
 
 @Composable
 private fun OnboardingHeader() {
@@ -266,7 +268,7 @@ private fun OnboardingHobbyProjectNotice(onClick: () -> Unit) {
             .fillMaxWidth()
             .testTag("onboarding_hobby_notice"),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -274,14 +276,14 @@ private fun OnboardingHobbyProjectNotice(onClick: () -> Unit) {
                 text = "This is a hobby project",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
             Text(
-                text = "Lyrra is built and maintained by one person in their spare time, and " +
+                text = "Lyrra is built and maintained by $DEV_GITHUB and $CO_DEV_GITHUB in their spare time, and " +
                     "it's continuously updated - so there will be bugs. Found one? Please report " +
                     "it by emailing the developer.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
             )
             // Only this row is tappable, not the whole card - scrolling the dialog by dragging
@@ -291,7 +293,7 @@ private fun OnboardingHobbyProjectNotice(onClick: () -> Unit) {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onClick)
-                    .background(MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.08f))
+                    .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.08f))
                     .padding(horizontal = 12.dp, vertical = 10.dp)
                     .testTag("onboarding_report_bug"),
                 verticalAlignment = Alignment.CenterVertically,
@@ -300,14 +302,14 @@ private fun OnboardingHobbyProjectNotice(onClick: () -> Unit) {
                 Icon(
                     imageVector = Icons.Default.Email,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
                     text = SUPPORT_EMAIL,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.weight(1f),
                 )
             }
