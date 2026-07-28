@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app logo/Museflow logo 2 for beta.png" width="150" alt="Lyrra Logo"/>
+  <img src="app logo/ic_launcher_foreground_photo.jpeg" width="150" alt="Lyrra Logo"/>
 </p>
 
 <h1 align="center">Lyrra</h1>
