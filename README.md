@@ -146,6 +146,11 @@ export KEY_PASSWORD="your_key_password"
 
 This project is licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
 
+## 👤 Developer
+Mynul Kabir Nayem 📧 mynulkbr@gmail.com
+Tanvir Ahmed  📧 tanvirahmd565@gmail.com
+
+
 ## ⚠️ Disclaimer
 
 Lyrra is an independent project for personal/educational use. It is not affiliated with, endorsed by, or connected to YouTube, Google, or any of their subsidiaries. All content streamed through the app is sourced from publicly available APIs. Please respect the terms of service of the platforms you use.
