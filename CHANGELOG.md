@@ -2,14 +2,14 @@
 
 ## MuseFlow v1.1.1 Beta 🎵
 
-Welcome to the biggest update to MuseFlow yet! **v1.1.1 Beta** introduces a massive overhaul to the Library, beautiful UI/UX animations, syllable-synced lyrics, and full support for your local audio files.
+Welcome to the biggest update to MuseFlow yet! **v1.1.1 Beta** introduces a massive overhaul to the Library, beautiful UI/UX animations, syllable-synced lyrics, and full support for your local audio.
 
 ### ✨ Major Features
-* **Ultimate Library Redesign**: The library has been rebuilt from the ground up with interactive chips for easy access to **Playlists**, **Liked Songs**, **Downloads**, **Local Audio**, and **Cached** tracks.
+* **Ultimate Library Redesign**: The library has been rebuilt from the ground up with interactive chips for easy access to **Playlists**, **Liked Songs**, **Downloads**, **Local Audio**, and **Cached** shelves for faster browsing.
 * **Full Local Audio Support**: MuseFlow now scans your device for local MP3 files and integrates them perfectly alongside streamed music, complete with embedded cover art!
-* **Advanced Analytics Dashboard**: We've added a robust new **Stats** screen! Track your top songs, artists, and albums dynamically with precise timeframe filters (1 week, 1 month, 6 months, 1 year, and continuous).
+* **Advanced Analytics Dashboard**: We've added a robust new **Stats** screen! Track your top songs, artists, and albums dynamically with precise timeframe filters (1 week, 1 month, 6 months, 1 year, all time).
 * **Syllable-Synced Lyrics**: Experience a true karaoke feel with new word-by-word synced lyrics that highlight perfectly in time with the artist.
-* **Offline Home Caching**: The Home Screen now caches your shelves (Recently Played, genres) to the database and displays an offline indicator when you lose connection, meaning the app is always functional.
+* **Offline Home Caching**: The Home Screen now caches your shelves (Recently Played, genres) to the database and displays an offline indicator when you lose connection, meaning the app is always functional even with flaky connectivity.
 
 ### 🎧 Playback & Player Upgrades
 * **Sleep Timer**: A brand new sleep timer (10, 15, 30, and 45 minutes) has been added directly to the Now Playing screen.
@@ -32,9 +32,21 @@ Welcome to the biggest update to MuseFlow yet! **v1.1.1 Beta** introduces a mass
 
 ## Lyrra v1.1.1 (MuseFlow Beta v1.1.2)
 
-* **First-run onboarding screen**: shown once on a fresh install and once again after every update, matching Echo Music's own "show once per version" pattern - an app intro card, a hobby-project/bug-report notice with a one-tap email link, a muted "Star the Repo" action, and a solid "Continue" button.
-* **Karaoke lyrics sweep smoothed further**: the in-progress word's highlight now animates on Compose's own frame clock instead of being sampled from the player's polled position, so it reads as continuous rather than stepped.
-* **General playback-state performance pass**: the periodic position tick no longer rebuilds the entire queue/metadata state twice a second - only the position itself updates on tick, cutting real per-second allocation/recomposition work while anything plays.
-* **Queue swipe-to-remove**: replaces the old per-row "⋮" menu - swipe a queued track left-to-right to remove it, with the list reflowing smoothly instead of snapping; fixed a key-reuse bug where a removed row's swipe state could visually "stick" to whatever song took its place.
+* **First-run onboarding screen**: shown once on a fresh install and once again after every update, matching Echo Music's own "show once per version" pattern - an app intro card, a hobby-project/bug-report reminder, and quick privacy tips.
+* **Karaoke lyrics sweep smoothed further**: the in-progress word's highlight now animates on Compose's own frame clock instead of being sampled from the player's polled position, so it reads as continuous motion rather than choppy updates.
+* **General playback-state performance pass**: the periodic position tick no longer rebuilds the entire queue/metadata state twice a second - only the position itself updates on tick, cutting real performance overhead and battery usage.
+* **Queue swipe-to-remove**: replaces the old per-row "⋮" menu - swipe a queued track left-to-right to remove it, with the list reflowing smoothly instead of snapping; fixed a key-reuse bug where a removed row could cause incorrect reordering.
 * **Custom accent color picker fixed**: the saturation/vibrancy square now actually affects the generated theme (previously only hue did, due to the color-scheme generation style ignoring the seed's chroma).
-* Assorted Now Playing menu cleanup: removed duplicate queue/like/download actions from the track menu (already available as dedicated on-screen controls), folded the lyrics panel's copy/search actions into the main menu, and fixed the song-details dialog not opening.
+* Assorted Now Playing menu cleanup: removed duplicate queue/like/download actions from the track menu (already available as dedicated on-screen controls), folded the lyrics panel's copy/search actions into a single contextual action.
+
+### ✨ New Improvements in this Release
+* **Added Colorful Explore screen**: a refreshed Explore experience with vibrant, album-art-driven tiles, curated mood and genre lanes, and dynamic section headers that adapt to currently trending content. Includes quick-preview playback and offline-synced suggestions.
+* **New Adaptive Launcher Icon**: updated adaptive icon assets (maskable + round) for modern launchers — crisp foreground glyph and improved safe-zone alignment so the icon looks great across shapes and sizes.
+* **Improved Streaming Bitrate Handling**: smarter quality selection with support for higher-bitrate sources when available (improved Opus/48kHz handling and better fallback logic). Adds an option in Settings to prefer High/Standard/Economy streaming to save data.
+* **Android 13+ Support & Compatibility**: project updated to target SDK 33 with compatibility fixes for Android 13 behavior changes (notifications, new permission flows, foreground service updates). Ensures smooth installs and runtime permission handling on Android 13 and newer.
+
+### 🛠️ Miscellaneous
+* Dependency updates: bump Compose, Media3, and Retrofit to recent stable releases for better performance and security.
+* Improved image decoding and memory handling in album art pipeline to reduce OOM risk on lower-RAM devices.
+* Fixed several small crashes around download resumption and notification action handling.
+
