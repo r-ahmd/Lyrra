@@ -3,6 +3,7 @@
 </p>
 
 <h1 align="center">Lyrra</h1>
+<h3 align="center">MuseFlow v2</h3>
 
 <p align="center">
   <b>🎵 A beautiful, ad-free music streaming app for Android</b>
